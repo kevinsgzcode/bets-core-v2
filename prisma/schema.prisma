@@ -1,0 +1,114 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------
+// AUTHENTICATION MODELS (NextAuth.js Standard)
+// --------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  accounts      Account[]
+  sessions      Session[]
+  picks         Pick[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --------------------------------------
+// CORE BUSINESS MODELS (Bets Core)
+// --------------------------------------
+
+// Enum: Obliga a que el estado sea solo uno de estos valores
+enum PickStatus {
+  PENDING
+  WON
+  LOST
+  PUSH
+  MANUAL_REVIEW // Si la API falla o algo raro pasa
+}
+
+// Enum: Preparamos el terreno para Futbol
+enum Sport {
+  NFL
+  SOCCER
+}
+
+model Pick {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Datos del Evento
+  sport          Sport      @default(NFL)
+  league         String     // Ej: "NFL", "Premier League"
+  matchDate      DateTime   // Cuándo se juega (vital para el cron job)
+  homeTeam       String
+  awayTeam       String
+  externalGameId String?    // ID de ESPN (Opcional para picks manuales)
+
+  // Datos de la Apuesta
+  selection String     // Por quién apostó
+  odds      Float      // Cuota decimal (ej: 1.90)
+  stake     Float      // Cantidad apostada
+  
+  // Resultados y Auditoría
+  status         PickStatus @default(PENDING)
+  resultScore    String?    // Ej: "24-10"
+  profit         Float?     // Se calcula cuando se cierra: (stake * odds) - stake si gana
+  
+  notes          String?    // "Aposté porque Mahomes estaba lesionado..."
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Índices para que las búsquedas sean rápidas
+  @@index([userId])
+  @@index([status])
+}
