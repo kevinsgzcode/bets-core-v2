@@ -10,46 +10,41 @@ import { error } from "console";
 import { success } from "zod";
 
 export async function createPick(prevState: any, formData: FormData) {
-  //  Check Authentication (Security First)
+  //  Check Authentication
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "You must be logged in to add a pick." };
   }
 
-  //  Extract raw data from FormData object
+  const mode = formData.get("mode");
   // We construct an object matching our Zod schema structure
-  const rawData = {
-    league: formData.get("league"),
+  const rawData: any = {
+    mode: mode,
     matchDate: formData.get("matchDate"),
-    homeTeam: formData.get("homeTeam"),
-    awayTeam: formData.get("awayTeam"),
-    selection: formData.get("selection"),
+    sport: formData.get("sport"),
     odds: formData.get("odds"),
     stake: formData.get("stake"),
-    category: formData.get("category"),
+    selection: formData.get("selection"),
   };
 
-  // Validate Data using Zod
-  const validatedFields = createPickSchema.safeParse(rawData);
+  if (mode === "SMART") {
+    rawData.homeTeam = formData.get("homeTeam");
+    rawData.awayTeam = formData.get("awayTeam");
+    rawData.league = "NFL";
+  } else {
+    rawData.eventDescription = formData.get("eventDescription");
+  }
 
-  if (!validatedFields.success) {
-    // If validation fails, return the specific field errors to the UI
+  const validateFields = createPickSchema.safeParse(rawData);
+
+  if (!validateFields.success) {
     return {
-      error: "Validation failed",
-      fieldErrors: validatedFields.error.flatten().fieldErrors,
+      error: "Validation fields",
+      fieldError: validateFields.error.flatten().fieldErrors,
     };
   }
 
-  const {
-    league,
-    matchDate,
-    homeTeam,
-    awayTeam,
-    selection,
-    odds,
-    stake,
-    category: sport,
-  } = validatedFields.data;
+  const data = validateFields.data;
 
   try {
     //check if uses have money
@@ -84,7 +79,7 @@ export async function createPick(prevState: any, formData: FormData) {
     const currentBank =
       totalDeposits - totalWithdrawals + (totalReturned - totalWagered);
 
-    if (stake > currentBank) {
+    if (data.stake > currentBank) {
       return {
         error: `Insufficient funds. You only have $${currentBank.toFixed(
           2
@@ -95,15 +90,19 @@ export async function createPick(prevState: any, formData: FormData) {
     await prisma.pick.create({
       data: {
         userId,
-        league,
-        matchDate: new Date(matchDate),
-        homeTeam,
-        awayTeam,
-        selection,
-        odds,
-        stake,
-        sport,
+        matchDate: new Date(data.matchDate),
+        sport: data.sport,
+        stake: data.stake,
+        odds: data.odds,
+        selection: data.selection,
         status: "PENDING",
+
+        isManual: data.mode === "MANUAL",
+        eventDescription: data.mode === "MANUAL" ? data.eventDescription : null,
+
+        homeTeam: data.mode === "SMART" ? data.homeTeam : null,
+        awayTeam: data.mode === "SMART" ? data.awayTeam : null,
+        league: data.mode === "SMART" ? data.league : "CUSTOM",
       },
     });
 

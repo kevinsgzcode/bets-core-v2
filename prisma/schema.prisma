@@ -90,26 +90,23 @@ model Pick {
   id        String   @id @default(cuid())
   userId    String
   
-  // Datos del Evento
-  sport          Sport      @default(NFL)
-  league         String     // Ej: "NFL", "Premier League"
-  matchDate      DateTime   // Cuándo se juega (vital para el cron job)
-  homeTeam       String
-  awayTeam       String
-  externalGameId String?    // ID de ESPN (Opcional para picks manuales)
+  sport     String    @default("NFL")
 
-  // Datos de la Apuesta
-  selection String     // Por quién apostó
-  odds      Float      // Cuota decimal (ej: 1.90)
-  stake     Float      // Cantidad apostada
-  
-  // Resultados y Auditoría
-  status         PickStatus @default(PENDING)
-  resultScore    String?    // Ej: "24-10"
-  profit         Float?     // Se calcula cuando se cierra: (stake * odds) - stake si gana
-  
-  notes          String?    // "Aposté porque Mahomes estaba lesionado..."
+  //hybrid mode
 
+  isManual         Boolean   @default(false)
+  eventDescription String?
+
+  league         String?     
+  homeTeam       String?
+  awayTeam       String?
+
+  matchDate   DateTime
+  selection   String    
+  odds        Float
+  stake       Float
+  status      PickStatus @default(PENDING)      
+  
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 

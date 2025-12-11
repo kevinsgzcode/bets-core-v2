@@ -11,13 +11,15 @@ import { OddsCell } from "./OddsCell";
 import { PickActions } from "./PickActions";
 
 // Helper: Convert "arizona-cardinals" -> "ARI" (Abbreviation saves space)
-const getTeamAbbr = (id: string) => {
+const getTeamAbbr = (id: string | null) => {
+  if (!id) return "?";
   const team = NFL_TEAMS.find((t) => t.value === id);
   return team ? team.abbr : id.substring(0, 3).toUpperCase();
 };
 
 // Helper: Convert "arizona-cardinals" -> "Arizona Cardinals"
-const getTeamName = (id: string) => {
+const getTeamName = (id: string | null) => {
+  if (!id) return "?";
   const team = NFL_TEAMS.find((t) => t.value === id);
   return team ? team.label : id;
 };
@@ -45,24 +47,41 @@ export const columns: ColumnDef<Pick>[] = [
     ),
   },
 
-  //  LEAGUE
+  //  League / Sport
   {
-    accessorKey: "league",
-    header: "League",
-    cell: ({ row }) => (
-      <span className="font-mono text-xs font-bold text-slate-400">
-        {row.getValue("league")}
-      </span>
-    ),
+    accessorKey: "sport",
+    header: "Sport",
+    cell: ({ row }) => {
+      const pick = row.original;
+      // If it's NFL smart pick, show "NFL". If manual, show the sport selected
+      const display = pick.isManual ? pick.sport : pick.league || pick.sport;
+      return (
+        <span className="font-mono text-[10px] font-bold text-slate-400 uppercase">
+          {display}
+        </span>
+      );
+    },
   },
 
-  // MATCHUP (The most important context)
+  // MATCHUP smart logic applied here
   {
     id: "matchup",
-    header: "Matchup",
+    header: "Matchup / Event",
     cell: ({ row }) => {
-      const home = getTeamAbbr(row.original.homeTeam);
-      const away = getTeamAbbr(row.original.awayTeam);
+      const pick = row.original;
+
+      if (pick.isManual) {
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-slate-900">
+              {pick.eventDescription || "Custon Evenet"}
+            </span>
+          </div>
+        );
+      }
+      //smart mode
+      const home = getTeamAbbr(pick.homeTeam);
+      const away = getTeamAbbr(pick.awayTeam);
       return (
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-slate-700">
@@ -78,11 +97,15 @@ export const columns: ColumnDef<Pick>[] = [
     accessorKey: "selection",
     header: "Pick",
     cell: ({ row }) => {
-      const rawSelection = row.getValue("selection") as string;
-      // Try to find the team name, otherwise show raw selection
-      const teamName = getTeamName(rawSelection);
+      const pick = row.original;
+      const rawSelection = pick.selection;
+
+      const displayName = pick.isManual
+        ? rawSelection
+        : getTeamName(rawSelection);
+
       return (
-        <span className="font-medium text-blue-600 text-xs">{teamName}</span>
+        <span className="font-medium text-blue-600 text-xs">{displayName}</span>
       );
     },
   },
@@ -128,7 +151,7 @@ export const columns: ColumnDef<Pick>[] = [
     },
   },
 
-  // STATUS BADGE
+  // STATUS
   {
     accessorKey: "status",
     header: "Result",
