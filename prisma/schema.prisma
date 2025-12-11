@@ -24,6 +24,8 @@ model User {
   sessions      Session[]
   picks         Pick[]
 
+  transactions  Transaction[]
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -63,19 +65,25 @@ model Session {
 // CORE BUSINESS MODELS (Bets Core)
 // --------------------------------------
 
-// Enum: Obliga a que el estado sea solo uno de estos valores
+// Enum: 
 enum PickStatus {
   PENDING
   WON
   LOST
   PUSH
-  MANUAL_REVIEW // Si la API falla o algo raro pasa
+  MANUAL_REVIEW 
 }
 
-// Enum: Preparamos el terreno para Futbol
+// Enum: prparing to soccer
 enum Sport {
   NFL
   SOCCER
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  MANUAL_ADJUSTMENT
 }
 
 model Pick {
@@ -111,4 +119,21 @@ model Pick {
   // Índices para que las búsquedas sean rápidas
   @@index([userId])
   @@index([status])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  
+  type        TransactionType
+  amount      Float           // Always store as positive value
+  description String?         // e.g. "Initial Deposit", "Payout to Bank"
+  
+  createdAt   DateTime        @default(now())
+  
+  
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+
 }

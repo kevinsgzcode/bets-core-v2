@@ -1,5 +1,15 @@
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
+import { CreatePickModal } from "@/components/picks/CreatePickModal";
+import { getUserPicks } from "@/lib/data";
+import { columns } from "@/components/picks/table/columns";
+import { DataTable } from "@/components/picks/table/data-table";
+import { FormatToggle } from "@/components/picks/FormatToggle";
+import { BankrollChart } from "@/components/dashboard/BankrollChart";
+import { calculateStats } from "@/lib/utils/stats";
+import { StatsCards } from "@/components/dashboard/StatsCards";
+import { WalletModal } from "@/components/dashboard/WalletModal";
+import { getUserTransactions } from "@/lib/data";
 
 export default async function Home() {
   //get session form the server
@@ -9,6 +19,14 @@ export default async function Home() {
   if (!session?.user) {
     redirect("/login");
   }
+  //fetch data
+  const [picks, transactions] = await Promise.all([
+    getUserPicks(),
+    getUserTransactions(),
+  ]);
+
+  //calculate stats
+  const stats = calculateStats(picks, transactions);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -46,14 +64,39 @@ export default async function Home() {
         </div>
       </nav>
       {/*Main content */}
-      <main>
-        <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <div className="h-96 rounded-lg border-4 border-dashed border-gray-200 flex items-center justify-center">
-              <p className="text-gray-400 text-lg">
-                Dashboard Metrics will appear here
-              </p>
+      <main className="py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Header Section */}
+          <div className="md:flex md:items-center md:justify-between mb-8">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+                My Dashboard
+              </h2>
             </div>
+            <div className="mt-4 flex items-center gap-3 md:ml-4 md:mt-0">
+              <FormatToggle />
+              <WalletModal />
+              <CreatePickModal
+                buttonLabel="Add New Pick"
+                currentBank={stats.currentBank}
+              />
+            </div>
+          </div>
+          {/* Stats */}
+          <StatsCards stats={stats} />
+          {/*Graph section */}
+          <div className="mb-8">
+            <BankrollChart picks={picks} />
+          </div>
+
+          {/* Picks Grid */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">History</h3>
+            </div>
+
+            {/* The Table Component handles rendering, sorting and pagination */}
+            <DataTable columns={columns} data={picks} />
           </div>
         </div>
       </main>
