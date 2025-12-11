@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "currency" TEXT NOT NULL DEFAULT 'MXN',
+ADD COLUMN     "hasOnboarded" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "preferredOdds" TEXT NOT NULL DEFAULT 'DECIMAL';

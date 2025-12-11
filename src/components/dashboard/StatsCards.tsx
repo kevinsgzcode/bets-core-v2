@@ -1,12 +1,19 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardStats } from "@/lib/utils/stats";
 import { DollarSign, TrendingUp, Activity } from "lucide-react";
+import { useSettingsStore } from "@/lib/store";
+import { formatCurrency } from "@/lib/utils/format";
 
 interface StatsCardsProps {
   stats: DashboardStats;
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
+  // 1. Hook into the global store to get the user's preferred currency
+  const { currency } = useSettingsStore();
+
   return (
     <div className="grid gap-4 md:grid-cols-3 mb-8">
       {/* CARD 1: CURRENT BANK */}
@@ -19,9 +26,13 @@ export function StatsCards({ stats }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-slate-900">
-            ${stats.currentBank.toFixed(2)}
+            {/* Dynamic formatting based on currency store */}
+            {formatCurrency(stats.currentBank, currency)}
           </div>
-          <p className="text-xs text-slate-500">Starting from $1,000.00</p>
+          <p className="text-xs text-slate-500">
+            {/* Note: Ideally, 'initialBank' should also come from stats/DB to be accurate here */}
+            Total funds available
+          </p>
         </CardContent>
       </Card>
 
@@ -43,7 +54,9 @@ export function StatsCards({ stats }: StatsCardsProps) {
               stats.netProfit >= 0 ? "text-green-600" : "text-red-600"
             }`}
           >
-            {stats.netProfit >= 0 ? "+" : ""}${stats.netProfit.toFixed(2)}
+            {/* We handle the '+' sign manually, formatCurrency handles the symbol ($/€) */}
+            {stats.netProfit > 0 ? "+" : ""}
+            {formatCurrency(stats.netProfit, currency)}
           </div>
           <p className="text-xs text-slate-500">All time performance</p>
         </CardContent>
@@ -58,6 +71,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
           <Activity className="h-4 w-4 text-slate-400" />
         </CardHeader>
         <CardContent>
+          {/* ROI is a percentage, so it doesn't need currency formatting */}
           <div
             className={`text-2xl font-bold ${
               stats.roi >= 0 ? "text-blue-600" : "text-red-600"

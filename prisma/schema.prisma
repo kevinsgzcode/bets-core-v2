@@ -20,6 +20,11 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
+
+  hasOnboarded  Boolean   @default(false)
+  preferredOdds String    @default("DECIMAL") 
+  currency      String    @default("MXN")     
+
   accounts      Account[]
   sessions      Session[]
   picks         Pick[]

@@ -4,12 +4,14 @@ import { CreatePickModal } from "@/components/picks/CreatePickModal";
 import { getUserPicks } from "@/lib/data";
 import { columns } from "@/components/picks/table/columns";
 import { DataTable } from "@/components/picks/table/data-table";
-import { FormatToggle } from "@/components/picks/FormatToggle";
 import { BankrollChart } from "@/components/dashboard/BankrollChart";
 import { calculateStats } from "@/lib/utils/stats";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { WalletModal } from "@/components/dashboard/WalletModal";
 import { getUserTransactions } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { StoreInitializer } from "@/components/dashboard/StoreInitializer";
 
 export default async function Home() {
   //get session form the server
@@ -19,6 +21,13 @@ export default async function Home() {
   if (!session?.user) {
     redirect("/login");
   }
+
+  //fetch user with preferences
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { hasOnboarded: true, currency: true, preferredOdds: true },
+  });
+
   //fetch data
   const [picks, transactions] = await Promise.all([
     getUserPicks(),
@@ -30,6 +39,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {!user?.hasOnboarded && <OnboardingModal />}
       {/* navigation bar */}
       <nav className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -74,7 +84,6 @@ export default async function Home() {
               </h2>
             </div>
             <div className="mt-4 flex items-center gap-3 md:ml-4 md:mt-0">
-              <FormatToggle />
               <WalletModal />
               <CreatePickModal
                 buttonLabel="Add New Pick"

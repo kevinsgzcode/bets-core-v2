@@ -10,11 +10,11 @@ import {
   decimalToAmerican,
   calculatePotentialProfit,
 } from "@/lib/utils/odds";
+import { useSettingsStore } from "@/lib/store";
 
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -56,18 +56,23 @@ export function CreatePickForm({
   onSuccess,
   currentBank,
 }: CreatePickFormProps) {
-  // 1. CHANGE DEFAULT STATE TO 'MANUAL'
+  // 1. Get Global Preference
+  const { oddsFormat } = useSettingsStore();
+
   // const [mode, setMode] = useState<"SMART" | "MANUAL">("SMART") // <-- OLD
   const [mode, setMode] = useState<"SMART" | "MANUAL">("MANUAL"); // <-- NEW (MVP Locked)
 
-  const [isAmericanOdds, setIsAmericanOdds] = useState(true);
+  // [CORRECTION] Initialize state based on the global store, not hardcoded 'true'
+  const [isAmericanOdds, setIsAmericanOdds] = useState(
+    oddsFormat === "AMERICAN"
+  );
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [displayOdds, setDisplayOdds] = useState<string>("-110");
 
   const form = useForm<CreatePickSchema>({
     resolver: zodResolver(createPickSchema),
     defaultValues: {
-      // 2. CHANGE FORM DEFAULTS TO 'MANUAL'
       mode: "MANUAL",
       sport: "NFL",
       matchDate: new Date().toISOString().split("T")[0],
@@ -91,6 +96,12 @@ export function CreatePickForm({
     Number(odds || 1)
   );
 
+  // [CORRECTION] Sync local state if global store changes (e.g. initial load or toggle elsewhere)
+  useEffect(() => {
+    setIsAmericanOdds(oddsFormat === "AMERICAN");
+  }, [oddsFormat]);
+
+  // Effect to handle display format switching
   useEffect(() => {
     const currentDecimal = form.getValues("odds");
     if (isAmericanOdds) {
@@ -125,33 +136,6 @@ export function CreatePickForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {/* 3. HIDE TABS FOR MVP DEPLOYMENT 
-            We comment this out so the user stays locked in MANUAL mode.
-            Uncomment this block when NFL Automation (Smart Mode) is ready.
-        */}
-        {/* <Tabs 
-            value={mode} 
-            onValueChange={(val) => {
-                const newMode = val as "SMART" | "MANUAL"
-                setMode(newMode)
-                form.setValue("mode", newMode)
-                form.setValue("selection", "")
-            }} 
-            className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="SMART" className="gap-2">
-                <Bot className="h-4 w-4" />
-                Smart Mode (NFL)
-            </TabsTrigger>
-            <TabsTrigger value="MANUAL" className="gap-2">
-                <Pencil className="h-4 w-4" />
-                Manual Mode
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        */}
-
         {/* VISUAL INDICATOR FOR MVP */}
         <div className="bg-slate-100 p-2 rounded-md text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">
           Play responsibly and enjoy the game!
@@ -207,7 +191,6 @@ export function CreatePickForm({
         {mode === "SMART" ? (
           /* --- SMART MODE (HIDDEN FOR NOW) --- */
           <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-            {/* ... (Existing Smart Mode Code stays here safe) ... */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -321,18 +304,6 @@ export function CreatePickForm({
 
         {/* FINANCIAL SECTION */}
         <div className="pt-2 border-t border-slate-200">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold text-slate-700">Financials</h4>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-slate-500">Decimal</span>
-              <Switch
-                checked={isAmericanOdds}
-                onCheckedChange={setIsAmericanOdds}
-              />
-              <span className="text-xs font-bold text-slate-700">American</span>
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
