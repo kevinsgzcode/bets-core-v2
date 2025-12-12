@@ -3,8 +3,10 @@
 import * as React from "react";
 import {
   ColumnDef,
+  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   SortingState,
@@ -20,6 +22,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Filter } from "lucide-react";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -31,21 +41,71 @@ export function DataTable<TData, TValue>({
   data,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(), // Activates pagination logic
+    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(), // Activates sorting logic
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
     state: {
       sorting,
+      columnFilters,
+    },
+    initialState: {
+      pagination: {
+        pageSize: 10, // Default to 10 rows per page
+      },
     },
   });
 
   return (
     <div>
+      {/* --- TABLE CONTROLS (FILTERS) --- */}
+      <div className="flex items-center py-4 justify-between">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-slate-500" />
+          <span className="text-sm font-medium text-slate-700">
+            Filter Status:
+          </span>
+          <Select
+            value={
+              (table.getColumn("status")?.getFilterValue() as string) ?? "ALL"
+            }
+            onValueChange={(value) => {
+              if (value === "ALL") {
+                table.getColumn("status")?.setFilterValue(undefined);
+              } else if (value === "SETTLED") {
+                // Custom logic could go here, but for simple MVP let's filter individually or just rely on basic filters.
+                // For now, let's keep it simple: filter by specific status or All.
+                // If you want "WON" OR "LOST", TanStack filter functions need more setup.
+                // Let's stick to simple filters for MVP reliability.
+                table.getColumn("status")?.setFilterValue(undefined);
+              } else {
+                table.getColumn("status")?.setFilterValue(value);
+              }
+            }}
+          >
+            <SelectTrigger className="w-[180px] h-8 bg-white">
+              <SelectValue placeholder="All Bets" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Bets</SelectItem>
+              <SelectItem value="PENDING">Pending (Active)</SelectItem>
+              <SelectItem value="WON">Won</SelectItem>
+              <SelectItem value="LOST">Lost</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* --- TABLE --- */}
       <div className="rounded-md border bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-slate-50">
@@ -93,7 +153,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center text-slate-500"
                 >
-                  No bets recorded yet. Start by adding a pick!
+                  No bets found.
                 </TableCell>
               </TableRow>
             )}
@@ -101,10 +161,10 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-      {/* Pagination Controls */}
+      {/* --- PAGINATION --- */}
       <div className="flex items-center justify-between py-4">
         <div className="text-xs text-slate-500">
-          Showing {table.getRowModel().rows.length} results
+          Showing {table.getRowModel().rows.length} of {data.length} results
         </div>
         <div className="space-x-2">
           <Button

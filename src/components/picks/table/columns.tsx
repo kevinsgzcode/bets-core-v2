@@ -1,8 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Pick } from "@prisma/client"; // Auto-generated type from DB
-import { format } from "date-fns";
+import { Pick } from "@prisma/client";
+import { format, addMinutes } from "date-fns"; // Added addMinutes for UTC fix
 import { NFL_TEAMS } from "@/lib/constants";
 import { calculatePotentialProfit } from "@/lib/utils/odds";
 import { ArrowUpDown } from "lucide-react";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { OddsCell } from "./OddsCell";
 import { PickActions } from "./PickActions";
 
-// Helper: Convert "arizona-cardinals" -> "ARI" (Abbreviation saves space)
+// Helper: Convert "arizona-cardinals" -> "ARI"
 const getTeamAbbr = (id: string | null) => {
   if (!id) return "?";
   const team = NFL_TEAMS.find((t) => t.value === id);
@@ -24,15 +24,24 @@ const getTeamName = (id: string | null) => {
   return team ? team.label : id;
 };
 
+// Helper: Fix timezone offset for display
+const formatUTCDate = (dateString: Date) => {
+  const date = new Date(dateString);
+  // This simple hack adds the timezone offset to force the date to display as entered
+  // Note: For a robust SaaS, consider saving user timezone in DB. For MVP, this works.
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() + userTimezoneOffset);
+};
+
 export const columns: ColumnDef<Pick>[] = [
-  //  DATE COLUMN
+  //  DATE COLUMN (Fixed Timezone)
   {
     accessorKey: "matchDate",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
-          className="-ml-4"
+          className="-ml-4 hover:bg-transparent"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Date
@@ -40,11 +49,15 @@ export const columns: ColumnDef<Pick>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => (
-      <div className="font-medium text-slate-600">
-        {format(new Date(row.getValue("matchDate")), "MMM dd")}
-      </div>
-    ),
+    cell: ({ row }) => {
+      // Use the helper to correct the date visually
+      const fixedDate = formatUTCDate(row.getValue("matchDate"));
+      return (
+        <div className="font-medium text-slate-600">
+          {format(fixedDate, "MMM dd")}
+        </div>
+      );
+    },
   },
 
   //  League / Sport
@@ -53,17 +66,16 @@ export const columns: ColumnDef<Pick>[] = [
     header: "Sport",
     cell: ({ row }) => {
       const pick = row.original;
-      // If it's NFL smart pick, show "NFL". If manual, show the sport selected
       const display = pick.isManual ? pick.sport : pick.league || pick.sport;
       return (
-        <span className="font-mono text-[10px] font-bold text-slate-400 uppercase">
+        <span className="font-mono text-[10px] font-bold text-slate-400 uppercase tracking-wider">
           {display}
         </span>
       );
     },
   },
 
-  // MATCHUP smart logic applied here
+  // MATCHUP
   {
     id: "matchup",
     header: "Matchup / Event",
@@ -72,14 +84,17 @@ export const columns: ColumnDef<Pick>[] = [
 
       if (pick.isManual) {
         return (
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-slate-900">
-              {pick.eventDescription || "Custon Evenet"}
+          <div className="flex flex-col max-w-[180px]">
+            <span
+              className="text-sm font-semibold text-slate-900 truncate"
+              title={pick.eventDescription || ""}
+            >
+              {pick.eventDescription || "Custom Event"}
             </span>
           </div>
         );
       }
-      //smart mode
+      // Smart Mode
       const home = getTeamAbbr(pick.homeTeam);
       const away = getTeamAbbr(pick.awayTeam);
       return (
@@ -99,18 +114,22 @@ export const columns: ColumnDef<Pick>[] = [
     cell: ({ row }) => {
       const pick = row.original;
       const rawSelection = pick.selection;
-
       const displayName = pick.isManual
         ? rawSelection
         : getTeamName(rawSelection);
 
       return (
-        <span className="font-medium text-blue-600 text-xs">{displayName}</span>
+        <span
+          className="font-medium text-blue-600 text-xs truncate max-w-[150px] block"
+          title={displayName || ""}
+        >
+          {displayName}
+        </span>
       );
     },
   },
 
-  //  ODDS (Formatted)
+  //  ODDS
   {
     accessorKey: "odds",
     header: "Odds",
@@ -132,22 +151,44 @@ export const columns: ColumnDef<Pick>[] = [
     },
   },
 
-  //  CALCULATED PROFIT
+  //  REAL P/L (PROFIT / LOSS) [MAJOR UPDATE]
   {
     id: "profit",
-    header: "Est. Profit",
+    header: "P/L",
     cell: ({ row }) => {
       const pick = row.original;
-      const profit = calculatePotentialProfit(pick.stake, pick.odds);
-      return (
-        <div
-          className={`font-bold ${
-            profit > 0 ? "text-green-600" : "text-slate-400"
-          }`}
-        >
-          ${profit.toFixed(2)}
-        </div>
-      );
+      const potentialProfit = calculatePotentialProfit(pick.stake, pick.odds);
+      const status = pick.status;
+
+      // 1. WON: Show Green Profit
+      if (status === "WON") {
+        return (
+          <div className="font-bold text-green-600">
+            +${potentialProfit.toFixed(2)}
+          </div>
+        );
+      }
+
+      // 2. LOST: Show Red Loss (The Stake)
+      if (status === "LOST") {
+        return (
+          <div className="font-bold text-red-500">
+            -${pick.stake.toFixed(2)}
+          </div>
+        );
+      }
+
+      // 3. PENDING: Show Potential in Gray (Neutral)
+      if (status === "PENDING") {
+        return (
+          <div className="text-xs text-slate-400">
+            (Pot: ${potentialProfit.toFixed(2)})
+          </div>
+        );
+      }
+
+      // 4. PUSH/VOID
+      return <div className="font-bold text-slate-500">$0.00</div>;
     },
   },
 
@@ -159,15 +200,15 @@ export const columns: ColumnDef<Pick>[] = [
       const status = row.getValue("status") as string;
 
       const colors: Record<string, string> = {
-        PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        WON: "bg-green-100 text-green-800 border-green-200",
-        LOST: "bg-red-100 text-red-800 border-red-200",
-        PUSH: "bg-gray-100 text-gray-800 border-gray-200",
+        PENDING: "bg-slate-100 text-slate-600 border-slate-200",
+        WON: "bg-green-100 text-green-700 border-green-200",
+        LOST: "bg-red-50 text-red-700 border-red-100",
+        PUSH: "bg-orange-50 text-orange-700 border-orange-100",
       };
 
       return (
         <span
-          className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold border ${
+          className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold border ${
             colors[status] || "bg-gray-100"
           }`}
         >
@@ -176,7 +217,8 @@ export const columns: ColumnDef<Pick>[] = [
       );
     },
   },
-  //ACTIONS COLUMN
+
+  // ACTIONS
   {
     id: "actions",
     cell: ({ row }) => {

@@ -1,114 +1,43 @@
-import { auth, signOut } from "@/auth";
-import { redirect } from "next/navigation";
-import { CreatePickModal } from "@/components/picks/CreatePickModal";
-import { getUserPicks } from "@/lib/data";
-import { columns } from "@/components/picks/table/columns";
-import { DataTable } from "@/components/picks/table/data-table";
-import { BankrollChart } from "@/components/dashboard/BankrollChart";
+import { auth } from "@/auth";
+import { getUserPicks, getUserTransactions } from "@/lib/data";
 import { calculateStats } from "@/lib/utils/stats";
-import { StatsCards } from "@/components/dashboard/StatsCards";
-import { WalletModal } from "@/components/dashboard/WalletModal";
-import { getUserTransactions } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
-import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
-import { StoreInitializer } from "@/components/dashboard/StoreInitializer";
+// Import the new views
+import { DashboardView } from "@/components/dashboard/DashboardView";
+import { LandingPage } from "@/components/landing/LandingPage";
 
 export default async function Home() {
-  //get session form the server
+  // 1. Check Session Server-Side
   const session = await auth();
 
-  //if no user is logged in, redirect to login page
+  // 2. IF NO SESSION -> Show Public Landing Page
   if (!session?.user) {
-    redirect("/login");
+    return <LandingPage />;
   }
 
-  //fetch user with preferences
+  // 3. IF SESSION EXISTS -> Fetch Data & Show Dashboard
+
+  // A. Fetch user preferences (for the global store)
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { hasOnboarded: true, currency: true, preferredOdds: true },
+    select: {
+      hasOnboarded: true,
+      currency: true,
+      preferredOdds: true,
+    },
   });
 
-  //fetch data
+  // B. Fetch operational data
   const [picks, transactions] = await Promise.all([
     getUserPicks(),
     getUserTransactions(),
   ]);
 
-  //calculate stats
+  // C. Calculate financial stats
   const stats = calculateStats(picks, transactions);
 
+  // D. Render the Authenticated Dashboard View
   return (
-    <div className="min-h-screen bg-gray-50">
-      {!user?.hasOnboarded && <OnboardingModal />}
-      {/* navigation bar */}
-      <nav className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 justify-between items-center">
-            <div className="flex">
-              <div className="flex flex-shrink-0 items-center">
-                <span className="text-xl font-bold text-blue-600">
-                  Bets Core
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500">
-                Welcome, {session.user.email}
-              </span>
-              {/* Logout */}
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut();
-                }}
-              >
-                <button
-                  type="submit"
-                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                >
-                  Sign Out
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </nav>
-      {/*Main content */}
-      <main className="py-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header Section */}
-          <div className="md:flex md:items-center md:justify-between mb-8">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-                My Dashboard
-              </h2>
-            </div>
-            <div className="mt-4 flex items-center gap-3 md:ml-4 md:mt-0">
-              <WalletModal />
-              <CreatePickModal
-                buttonLabel="Add New Pick"
-                currentBank={stats.currentBank}
-              />
-            </div>
-          </div>
-          {/* Stats */}
-          <StatsCards stats={stats} />
-          {/*Graph section */}
-          <div className="mb-8">
-            <BankrollChart picks={picks} />
-          </div>
-
-          {/* Picks Grid */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">History</h3>
-            </div>
-
-            {/* The Table Component handles rendering, sorting and pagination */}
-            <DataTable columns={columns} data={picks} />
-          </div>
-        </div>
-      </main>
-    </div>
+    <DashboardView user={user} session={session} picks={picks} stats={stats} />
   );
 }
