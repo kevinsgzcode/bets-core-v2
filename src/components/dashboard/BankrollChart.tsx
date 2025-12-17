@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -11,20 +9,23 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { Pick } from "@prisma/client";
-import { generateBankrollTrend } from "@/lib/utils/charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface BankrollChartProps {
-  picks: Pick[];
+interface ChartPoint {
+  date: string;
+  balance: number;
 }
 
-export function BankrollChart({ picks }: BankrollChartProps) {
-  // Calculate trend data
-  // TODO: In the future, '1000' should come from the User's Settings in DB
-  const data = generateBankrollTrend(picks, 1000);
+interface BankrollChartProps {
+  data: ChartPoint[];
+}
 
-  const isProfit = data[data.length - 1].balance >= 1000;
+export function BankrollChart({ data }: BankrollChartProps) {
+  // Determine Profit/Loss status
+  const startBalance = data.length > 0 ? data[0].balance : 0;
+  const currentBalance = data.length > 0 ? data[data.length - 1].balance : 0;
+
+  const isProfit = currentBalance >= startBalance;
 
   return (
     <Card className="col-span-4">
@@ -55,6 +56,9 @@ export function BankrollChart({ picks }: BankrollChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                // FIX: This forces the first and LAST label to always show
+                interval="preserveStartEnd"
+                minTickGap={30}
               />
               <YAxis
                 stroke="#888888"
@@ -62,6 +66,8 @@ export function BankrollChart({ picks }: BankrollChartProps) {
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `$${value}`}
+                // Optional: Dynamic domain to make the curve more dramatic
+                domain={["auto", "auto"]}
               />
               <Tooltip
                 contentStyle={{

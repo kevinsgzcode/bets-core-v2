@@ -60,7 +60,7 @@ export function DataTable<TData, TValue>({
     },
     initialState: {
       pagination: {
-        pageSize: 10, // Default to 10 rows per page
+        pageSize: 10,
       },
     },
   });

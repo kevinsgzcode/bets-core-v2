@@ -97,6 +97,10 @@ model Pick {
   
   sport     String    @default("NFL")
 
+  isParlay    Boolean  @default(false)      
+  legs        Int?     @default(1)            
+  composition String?  @default("SINGLE")    
+
   //hybrid mode
 
   isManual         Boolean   @default(false)
@@ -110,6 +114,7 @@ model Pick {
   selection   String    
   odds        Float
   stake       Float
+  bonus       Float     @default(0)
   status      PickStatus @default(PENDING)      
   
   createdAt      DateTime   @default(now())

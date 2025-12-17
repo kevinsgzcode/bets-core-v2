@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Pick" ADD COLUMN     "composition" TEXT DEFAULT 'SINGLE',
+ADD COLUMN     "isParlay" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "legs" INTEGER DEFAULT 1;

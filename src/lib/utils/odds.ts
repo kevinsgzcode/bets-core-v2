@@ -31,7 +31,8 @@ export function decimalToAmerican(decimal: number): number {
 //calculates potential profit
 export function calculatePotentialProfit(
   stake: number,
-  decimalOdds: number
+  decimalOdds: number,
+  bonus: number = 0
 ): number {
-  return stake * decimalOdds - stake;
+  return stake * decimalOdds + bonus - stake;
 }

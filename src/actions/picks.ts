@@ -6,8 +6,6 @@ import { createPickSchema } from "@/lib/zod";
 import { revalidatePath } from "next/cache";
 import { PickStatus } from "@prisma/client";
 import { calculatePotentialProfit } from "@/lib/utils/odds";
-import { error } from "console";
-import { success } from "zod";
 
 export async function createPick(prevState: any, formData: FormData) {
   //  Check Authentication
@@ -17,13 +15,14 @@ export async function createPick(prevState: any, formData: FormData) {
   }
 
   const mode = formData.get("mode");
-  // We construct an object matching our Zod schema structure
+  //construct an object matching our Zod schema structure
   const rawData: any = {
     mode: mode,
     matchDate: formData.get("matchDate"),
     sport: formData.get("sport"),
     odds: formData.get("odds"),
     stake: formData.get("stake"),
+    bonus: formData.get("bonus"),
     selection: formData.get("selection"),
   };
 
@@ -69,8 +68,9 @@ export async function createPick(prevState: any, formData: FormData) {
     picks.forEach((p) => {
       totalWagered += p.stake;
       if (p.status === "WON") {
-        const profit = calculatePotentialProfit(p.stake, p.odds);
-        totalReturned += p.stake + profit;
+        const profit = calculatePotentialProfit(p.stake, p.odds, p.bonus);
+        const historicalBonus = (p as any).bonus || 0;
+        totalReturned += p.stake + profit + historicalBonus;
       } else if (p.status === "PUSH") {
         totalReturned += p.stake;
       }
@@ -93,9 +93,13 @@ export async function createPick(prevState: any, formData: FormData) {
         matchDate: new Date(data.matchDate),
         sport: data.sport,
         stake: data.stake,
+        bonus: data.bonus || 0,
         odds: data.odds,
         selection: data.selection,
         status: "PENDING",
+        isParlay: data.isParlay,
+        legs: data.isParlay ? data.legs : 1,
+        composition: data.isParlay ? data.composition : "SINGLE",
 
         isManual: data.mode === "MANUAL",
         eventDescription: data.mode === "MANUAL" ? data.eventDescription : null,

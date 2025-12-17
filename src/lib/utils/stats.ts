@@ -8,6 +8,8 @@ export interface DashboardStats {
   totalBets: number;
   winRate: number;
   turnover: number;
+  totalDeposits: number;
+  totalWithdrawals: number;
 }
 
 export function calculateStats(
@@ -32,11 +34,12 @@ export function calculateStats(
   let settleBets = 0;
 
   picks.forEach((pick) => {
+    const bonus = (pick as any).bonus || 0;
     //every pick reduce banke
     totalWagered += pick.stake;
 
     if (pick.status === "WON") {
-      const profit = calculatePotentialProfit(pick.stake, pick.odds);
+      const profit = calculatePotentialProfit(pick.stake, pick.odds, bonus);
       const payout = pick.stake + profit;
       totalReturned += payout;
 
@@ -63,8 +66,9 @@ export function calculateStats(
   const settleReturned = picks
     .filter((p) => ["WON", "LOST", "PUSH"].includes(p.status))
     .reduce((sum, p) => {
+      const bonus = (p as any).bonus || 0;
       if (p.status === "WON")
-        return sum + p.stake + calculatePotentialProfit(p.stake, p.odds);
+        return sum + p.stake + calculatePotentialProfit(p.stake, p.odds, bonus);
       if (p.status === "PUSH") return sum + p.stake;
       return sum;
     }, 0);
@@ -81,5 +85,7 @@ export function calculateStats(
     totalBets: picks.length,
     winRate,
     turnover: totalWagered,
+    totalDeposits,
+    totalWithdrawals,
   };
 }

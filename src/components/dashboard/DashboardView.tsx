@@ -7,10 +7,10 @@ import { WalletModal } from "@/components/dashboard/WalletModal";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { StoreInitializer } from "@/components/dashboard/StoreInitializer";
 import { signOut } from "@/auth";
+// 1. Import the chart utility
+import { generateBankrollTrend } from "@/lib/utils/charts";
 
-// Define the interface for the props needed
 interface DashboardViewProps {
-  // Ideally strictly typed with Prisma generated types
   user: any;
   session: any;
   picks: any[];
@@ -23,23 +23,33 @@ export function DashboardView({
   picks,
   stats,
 }: DashboardViewProps) {
+  // 2. Calculate the Initial Bank (Real Money In)
+  // This prevents the chart from starting at 0 if the user deposited money.
+  // Formula: Total Deposits - Total Withdrawals
+  const initialBank =
+    (stats.totalDeposits || 0) - (stats.totalWithdrawals || 0);
+
+  // 3. Generate the trend data using the utility we refactored
+  // This groups by date and includes bonuses
+  const chartData = generateBankrollTrend(picks, initialBank);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 1. Global Preference Injection */}
+      {/* Global Preference Injection */}
       <StoreInitializer
         currency={user?.currency ?? "MXN"}
         oddsFormat={user?.preferredOdds ?? "DECIMAL"}
       />
 
-      {/* 2. Onboarding Check */}
+      {/* Onboarding Check */}
       {!user?.hasOnboarded && <OnboardingModal />}
 
-      {/* 3. Navigation Bar */}
+      {/* Navigation Bar */}
       <nav className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between items-center">
             <div className="flex">
-              <div className="flex flex-shrink-0 items-center">
+              <div className="flex shrink-0 items-center">
                 <span className="text-xl font-bold text-blue-600">
                   Bets Core
                 </span>
@@ -68,7 +78,7 @@ export function DashboardView({
         </div>
       </nav>
 
-      {/* 4. Main Dashboard Content */}
+      {/* Main Dashboard Content */}
       <main className="py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -92,7 +102,9 @@ export function DashboardView({
 
           {/* Charts */}
           <div className="mb-8">
-            <BankrollChart picks={picks} />
+            {/* 4. Pass the PRE-CALCULATED data to the chart */}
+            {/* NOTE: You need to update BankrollChart.tsx to accept 'data' instead of 'picks' */}
+            <BankrollChart data={chartData} />
           </div>
 
           {/* History Table */}

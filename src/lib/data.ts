@@ -13,7 +13,6 @@ export async function getUserPicks() {
         userId: session.user.id,
       },
       orderBy: {
-        //newest pick firts
         createdAt: "desc",
       },
     });

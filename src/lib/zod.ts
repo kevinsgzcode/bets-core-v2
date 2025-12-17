@@ -25,6 +25,13 @@ const basePickSchema = z.object({
   sport: z.string().min(1, "Sport is required"),
   odds: z.coerce.number().min(1.01, "Odds must be greater than 1.0"),
   stake: z.coerce.number().positive("Stake must be positive"),
+  bonus: z.coerce.number().nonnegative().optional().default(0),
+  isParlay: z.boolean().default(false),
+  legs: z.coerce
+    .number()
+    .min(2, "Parlays must have at least 2 picks")
+    .optional(),
+  composition: z.string().optional(),
 });
 
 //smart mode

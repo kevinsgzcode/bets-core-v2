@@ -2,10 +2,10 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Pick } from "@prisma/client";
-import { format, addMinutes } from "date-fns"; // Added addMinutes for UTC fix
+import { format, addMinutes } from "date-fns";
 import { NFL_TEAMS } from "@/lib/constants";
 import { calculatePotentialProfit } from "@/lib/utils/odds";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OddsCell } from "./OddsCell";
 import { PickActions } from "./PickActions";
@@ -34,7 +34,7 @@ const formatUTCDate = (dateString: Date) => {
 };
 
 export const columns: ColumnDef<Pick>[] = [
-  //  DATE COLUMN (Fixed Timezone)
+  //  DATE
   {
     accessorKey: "matchDate",
     header: ({ column }) => {
@@ -132,63 +132,79 @@ export const columns: ColumnDef<Pick>[] = [
   //  ODDS
   {
     accessorKey: "odds",
-    header: "Odds",
+    header: () => <div className="text-center">Odds</div>,
     cell: ({ row }) => {
       const val = parseFloat(row.getValue("odds"));
-      return <OddsCell decimalValue={val} />;
+      return (
+        <div className="flex justify-center">
+          <OddsCell decimalValue={val} />
+        </div>
+      );
     },
   },
 
   //  STAKE
   {
     accessorKey: "stake",
-    header: "Stake",
+    header: () => <div className="text-center">Stake</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("stake"));
       return (
-        <div className="font-medium text-slate-700">${amount.toFixed(2)}</div>
+        <div className="font-medium text-slate-700 text-center">
+          ${amount.toFixed(2)}
+        </div>
       );
     },
   },
 
-  //  REAL P/L (PROFIT / LOSS) [MAJOR UPDATE]
+  //  REAL P/L
   {
     id: "profit",
-    header: "P/L",
+    header: () => <div className="text-center">P/L</div>,
     cell: ({ row }) => {
       const pick = row.original;
-      const potentialProfit = calculatePotentialProfit(pick.stake, pick.odds);
-      const status = pick.status;
 
-      // 1. WON: Show Green Profit
-      if (status === "WON") {
+      const bonus = pick.bonus || 0;
+
+      const potentialProfit = calculatePotentialProfit(
+        pick.stake,
+        pick.odds,
+        bonus
+      );
+
+      const totalPotentialProfit = potentialProfit; //+ bonus;
+
+      // 1. WON: Green Profit + Bonus Indicator
+      if (pick.status === "WON") {
         return (
-          <div className="font-bold text-green-600">
-            +${potentialProfit.toFixed(2)}
+          <div className="flex flex-col text-center">
+            <span className="font-bold text-green-600 ">
+              +${totalPotentialProfit.toFixed(2)}
+            </span>
           </div>
         );
       }
 
       // 2. LOST: Show Red Loss (The Stake)
-      if (status === "LOST") {
+      if (pick.status === "LOST") {
         return (
-          <div className="font-bold text-red-500">
+          <div className="font-bold text-red-500 text-center">
             -${pick.stake.toFixed(2)}
           </div>
         );
       }
 
       // 3. PENDING: Show Potential in Gray (Neutral)
-      if (status === "PENDING") {
+      if (pick.status === "PENDING") {
         return (
-          <div className="text-xs text-slate-400">
+          <div className="text-xs text-slate-400 text-center">
             (Pot: ${potentialProfit.toFixed(2)})
           </div>
         );
       }
 
       // 4. PUSH/VOID
-      return <div className="font-bold text-slate-500">$0.00</div>;
+      return <div className="font-bold text-slate-500 text-center">$0.00</div>;
     },
   },
 
