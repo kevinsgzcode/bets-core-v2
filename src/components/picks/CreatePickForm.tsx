@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-// Asegúrate de que tu schema 'createPickSchema' en @/lib/zod ya tenga los campos de parlay
-// Si no, actualízalo como vimos en el paso anterior.
+
 import { createPickSchema, type CreatePickSchema } from "@/lib/zod";
 import { createPick } from "@/actions/picks";
 import {
@@ -25,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch"; // [NEW] Needed for Toggle
+import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
@@ -36,13 +35,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { TeamCombobox } from "./TeamCombobox";
-import { Loader2, Gift, Layers, Zap } from "lucide-react"; // [NEW] Added icons
+import { Loader2, Gift, Layers, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 interface CreatePickFormProps {
   onSuccess: () => void;
   currentBank: number;
-  closeModal: () => void; // Added closeModal to props interface just in case
+  closeModal: () => void;
 }
 
 const SPORTS_LIST = [
@@ -128,12 +127,21 @@ export function CreatePickForm({
 
   async function onSubmit(values: CreatePickSchema) {
     setIsSubmitting(true);
+
+    const finalValues: CreatePickSchema = {
+      ...values,
+      sport: values.isParlay
+        ? values.composition === "MIXED"
+          ? "MIXED"
+          : values.composition || values.sport
+        : values.sport,
+    };
+
     const formData = new FormData();
 
     // Flatten values into FormData
-    Object.entries(values).forEach(([key, value]) => {
+    Object.entries(finalValues).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        // Handle boolean conversion explicitly for FormData
         if (typeof value === "boolean") {
           formData.append(key, value ? "true" : "false");
         } else {
@@ -147,7 +155,7 @@ export function CreatePickForm({
 
     setIsSubmitting(false);
     if (result?.error) {
-      toast.error(result.error); // Assuming result returns { error: string } on fail
+      toast.error(result.error);
     } else {
       toast.success(isParlayMode ? "Parlay created!" : "Pick created!");
       form.reset();
@@ -263,38 +271,35 @@ export function CreatePickForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="sport"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {isParlayMode ? "Primary Sport" : "Sport"}
-                </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select sport" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {SPORTS_LIST.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                    {isParlayMode && (
-                      <SelectItem value="MIXED">Mixed</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {!isParlayMode && (
+            <FormField
+              control={form.control}
+              name="sport"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sport</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select sport" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {SPORTS_LIST.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* DESCRIPTION ROW */}
@@ -335,8 +340,6 @@ export function CreatePickForm({
           />
 
           {/* Pick Selection Field */}
-          {/* If Parlay, we might hide this or use it for "Main Pick" if desired, but typically we just use Description. 
-                For now, let's keep it but optional in logic if needed, or re-purpose. */}
           <FormField
             control={form.control}
             name="selection"

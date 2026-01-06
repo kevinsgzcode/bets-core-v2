@@ -11,57 +11,44 @@ export function generateBankrollTrend(
   initialBank: number = 0
 ): ChartPoint[] {
   const sortedPicks = [...picks].sort(
-    (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 
-  const dailyOperations = sortedPicks.reduce((acc, pick) => {
-    if (pick.status !== "WON" && pick.status !== "LOST") return acc;
+  let currentBank = initialBank;
+  const dailyBalance = new Map<string, number>();
 
-    const dateObj = new Date(pick.matchDate);
+  sortedPicks.forEach((pick) => {
+    if (pick.status === "PENDING") return;
 
-    const dateKey = dateObj.toLocaleDateString("en-US", {
+    if (pick.status === "WON") {
+      currentBank += calculatePotentialProfit(
+        pick.stake,
+        pick.odds,
+        pick.bonus ?? 0
+      );
+    }
+
+    if (pick.status === "LOST") {
+      currentBank -= pick.stake;
+    }
+
+    // PUSH = no change
+
+    const dayKey = new Date(pick.createdAt).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      timeZone: "America/Mexico_City",
     });
 
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(pick);
-    return acc;
-  }, {} as Record<string, Pick[]>);
+    // Always overwrite
+    dailyBalance.set(dayKey, Number(currentBank.toFixed(2)));
+  });
 
-  let currentBank = initialBank;
+  const data: ChartPoint[] = [
+    { date: "Start", balance: Number(initialBank.toFixed(2)) },
+  ];
 
-  //start chart with initial bank roll
-  const data: ChartPoint[] = [{ date: "Start", balance: initialBank }];
-
-  //iterate and acumulate
-  Object.keys(dailyOperations).forEach((dateKey) => {
-    const daysPicks = dailyOperations[dateKey];
-    let dailyProfit = 0;
-
-    daysPicks.forEach((pick) => {
-      if (pick.status === "WON") {
-        dailyProfit += calculatePotentialProfit(
-          pick.stake,
-          pick.odds,
-          pick.bonus ?? 0
-        );
-      } else if (pick.status === "LOST") {
-        dailyProfit -= pick.stake;
-      }
-    });
-
-    // Update global bankroll
-    currentBank += dailyProfit;
-
-    // Push ONE point per day (End of Day Balance)
-    data.push({
-      date: dateKey,
-      balance: Number(currentBank.toFixed(2)),
-    });
+  dailyBalance.forEach((balance, date) => {
+    data.push({ date, balance });
   });
 
   return data;

@@ -1,22 +1,138 @@
 import { Pick, Transaction } from "@prisma/client";
 import { calculatePotentialProfit } from "./odds";
 
-export interface DashboardStats {
-  currentBank: number;
+/* =======================
+   RUN STATS (ACTIVE RUN)
+======================= */
+
+export interface RunStats {
+  // Performance (Equity)
+  initialBank: number; // First deposit of the run
+  equity: number; // initialBank + profit
+  profit: number;
+  roi: number;
+
+  // Liquidity
+  availableBankroll: number;
+  pendingStake: number;
+
+  // Meta
+  totalBets: number;
+  winRate: number;
+  turnover: number;
+  isProfit: boolean;
+}
+
+export function calculateRunStats(
+  picks: Pick[],
+  transactions: Transaction[]
+): RunStats {
+  /* -----------------------
+     TRANSACTIONS (RUN)
+  ------------------------ */
+
+  const deposits = transactions.filter((t) => t.type === "DEPOSIT");
+  const withdrawals = transactions.filter((t) => t.type === "WITHDRAWAL");
+
+  // First deposit defines the run starting point
+  const initialBank =
+    deposits.length > 0
+      ? deposits.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )[0].amount
+      : 0;
+
+  const totalDeposits = deposits.reduce((sum, t) => sum + t.amount, 0);
+  const totalWithdrawals = withdrawals.reduce((sum, t) => sum + t.amount, 0);
+
+  /* -----------------------
+     PICKS (RUN)
+  ------------------------ */
+
+  let wagered = 0;
+  let returned = 0;
+  let wins = 0;
+  let settled = 0;
+  let pendingStake = 0;
+
+  picks.forEach((pick) => {
+    if (pick.status === "PENDING") {
+      pendingStake += pick.stake;
+      return;
+    }
+
+    // From here, bet IS settled
+    wagered += pick.stake;
+    settled++;
+
+    if (pick.status === "WON") {
+      const bonus = (pick as any).bonus || 0;
+      returned +=
+        pick.stake + calculatePotentialProfit(pick.stake, pick.odds, bonus);
+      wins++;
+    }
+
+    if (pick.status === "PUSH") {
+      returned += pick.stake;
+    }
+
+    // LOST → nothing returned
+  });
+
+  /* -----------------------
+     PERFORMANCE (EQUITY)
+  ------------------------ */
+
+  const profit = returned - wagered;
+  const equity = initialBank + profit;
+  const roi = wagered > 0 ? (profit / wagered) * 100 : 0;
+  const winRate = settled > 0 ? (wins / settled) * 100 : 0;
+
+  /* -----------------------
+     LIQUIDITY
+  ------------------------ */
+
+  const availableBankroll = Math.max(
+    0,
+    totalDeposits - totalWithdrawals - pendingStake
+  );
+
+  return {
+    initialBank,
+    equity,
+    profit,
+    roi,
+    availableBankroll,
+    pendingStake,
+
+    totalBets: picks.length,
+    winRate,
+    turnover: wagered,
+    isProfit: profit >= 0,
+  };
+}
+
+/* =======================
+   LIFETIME STATS
+======================= */
+
+export interface LifetimeStats {
+  totalDeposits: number;
+  totalWithdrawals: number;
+  netInvested: number;
+
   netProfit: number;
   roi: number;
   totalBets: number;
   winRate: number;
   turnover: number;
-  totalDeposits: number;
-  totalWithdrawals: number;
 }
 
-export function calculateStats(
+export function calculateLifetimeStats(
   picks: Pick[],
   transactions: Transaction[]
-): DashboardStats {
-  //calculate external money
+): LifetimeStats {
   const totalDeposits = transactions
     .filter((t) => t.type === "DEPOSIT")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -25,67 +141,43 @@ export function calculateStats(
     .filter((t) => t.type === "WITHDRAWAL")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  //calculate betting performance
-  //turnover
-  let totalWagered = 0;
-  //payouts
-  let totalReturned = 0;
+  const netInvested = totalDeposits - totalWithdrawals;
+
+  let wagered = 0; // ONLY settled bets
+  let returned = 0;
   let wins = 0;
-  let settleBets = 0;
+  let settled = 0;
 
   picks.forEach((pick) => {
-    const bonus = (pick as any).bonus || 0;
-    //every pick reduce banke
-    totalWagered += pick.stake;
+    if (pick.status === "PENDING") return;
+
+    wagered += pick.stake;
+    settled++;
 
     if (pick.status === "WON") {
-      const profit = calculatePotentialProfit(pick.stake, pick.odds, bonus);
-      const payout = pick.stake + profit;
-      totalReturned += payout;
-
+      const bonus = (pick as any).bonus || 0;
+      returned +=
+        pick.stake + calculatePotentialProfit(pick.stake, pick.odds, bonus);
       wins++;
-      settleBets++;
-    } else if (pick.status === "LOST") {
-      //returned is 0
-      settleBets++;
-    } else if (pick.status === "PUSH") {
-      totalReturned += pick.stake;
-      settleBets++;
+    }
+
+    if (pick.status === "PUSH") {
+      returned += pick.stake;
     }
   });
-  // Bankroll = (Money In - Money Out) + (Money Won - Money Bet)
-  const currentBank =
-    totalDeposits - totalWithdrawals + (totalReturned - totalWagered);
 
-  //calculate Profit based on SETTLED bets to show performance
-
-  const settledWagered = picks
-    .filter((p) => ["WON", "LOST", "PUSH"].includes(p.status))
-    .reduce((sum, p) => sum + p.stake, 0);
-
-  const settleReturned = picks
-    .filter((p) => ["WON", "LOST", "PUSH"].includes(p.status))
-    .reduce((sum, p) => {
-      const bonus = (p as any).bonus || 0;
-      if (p.status === "WON")
-        return sum + p.stake + calculatePotentialProfit(p.stake, p.odds, bonus);
-      if (p.status === "PUSH") return sum + p.stake;
-      return sum;
-    }, 0);
-
-  const netProfit = settleReturned - settledWagered;
-  // ROI = (Net Profit / Turnover) * 100
-  const roi = settledWagered > 0 ? (netProfit / settledWagered) * 100 : 0;
-  const winRate = settleBets > 0 ? (wins / settleBets) * 100 : 0;
+  const netProfit = returned - wagered;
+  const roi = wagered > 0 ? (netProfit / wagered) * 100 : 0;
+  const winRate = settled > 0 ? (wins / settled) * 100 : 0;
 
   return {
-    currentBank,
+    totalDeposits,
+    totalWithdrawals,
+    netInvested,
     netProfit,
     roi,
     totalBets: picks.length,
     winRate,
-    turnover: totalWagered,
-    totalDeposits,
-    totalWithdrawals,
+    turnover: wagered,
   };
 }

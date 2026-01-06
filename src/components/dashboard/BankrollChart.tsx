@@ -21,16 +21,34 @@ interface BankrollChartProps {
 }
 
 export function BankrollChart({ data }: BankrollChartProps) {
-  // Determine Profit/Loss status
-  const startBalance = data.length > 0 ? data[0].balance : 0;
-  const currentBalance = data.length > 0 ? data[data.length - 1].balance : 0;
+  //empty state
+  if (!data || data.length === 0) {
+    return (
+      <Card className="col-span-4">
+        <CardHeader>
+          <CardTitle>Bankroll Growth</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[300px] items-center justify-center text-sm text-slate-500">
+            Start a new run to see your bankroll growth 📈
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
+  // Determine Profit/Loss status
+  const startBalance = data[0].balance;
+  const currentBalance = data[data.length - 1].balance;
   const isProfit = currentBalance >= startBalance;
 
   return (
     <Card className="col-span-4">
       <CardHeader>
         <CardTitle>Bankroll Growth</CardTitle>
+        <p className="text-xs text-slate-400">
+          Updated daily based on settled bets
+        </p>
       </CardHeader>
       <CardContent className="pl-2">
         <div className="h-[300px] w-full">

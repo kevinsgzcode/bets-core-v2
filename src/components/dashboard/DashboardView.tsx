@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useMemo } from "react";
 import { CreatePickModal } from "@/components/picks/CreatePickModal";
 import { columns } from "@/components/picks/table/columns";
 import { DataTable } from "@/components/picks/table/data-table";
@@ -6,114 +9,136 @@ import { StatsCards } from "@/components/dashboard/StatsCards";
 import { WalletModal } from "@/components/dashboard/WalletModal";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { StoreInitializer } from "@/components/dashboard/StoreInitializer";
-import { signOut } from "@/auth";
-// 1. Import the chart utility
 import { generateBankrollTrend } from "@/lib/utils/charts";
+import { handleSignOut } from "@/actions/auth";
+import { BestPerformingSport } from "@/components/insights/BestPerformingSport";
+import { StreakInsight } from "@/components/insights/StreakInsight";
+import type { StreakInsight as StreakInsightType } from "@/lib/insights/streak";
 
 interface DashboardViewProps {
   user: any;
   session: any;
   picks: any[];
-  stats: any;
+  runStats: any | null;
+  lifetimeStats: any;
+  insights: {
+    bestSport: {
+      run: any | null;
+      lifetime: any | null;
+    };
+    streak: {
+      run: StreakInsightType | null;
+      lifetime: StreakInsightType | null;
+    };
+  };
 }
 
 export function DashboardView({
   user,
   session,
   picks,
-  stats,
+  runStats,
+  lifetimeStats,
+  insights,
 }: DashboardViewProps) {
-  // 2. Calculate the Initial Bank (Real Money In)
-  // This prevents the chart from starting at 0 if the user deposited money.
-  // Formula: Total Deposits - Total Withdrawals
-  const initialBank =
-    (stats.totalDeposits || 0) - (stats.totalWithdrawals || 0);
+  const [view, setView] = useState<"ALL" | "CYCLE">("CYCLE");
 
-  // 3. Generate the trend data using the utility we refactored
-  // This groups by date and includes bonuses
-  const chartData = generateBankrollTrend(picks, initialBank);
+  // If there is no active run, fallback to lifetime context
+  const effectiveBankroll = runStats ? runStats.availableBankroll : 0;
+
+  const displayedChartData = useMemo(() => {
+    if (!runStats) {
+      return [];
+    }
+
+    if (view === "ALL") {
+      return generateBankrollTrend(picks, lifetimeStats.netInvested);
+    }
+
+    const runPicks = picks.filter((p) => p.runId === runStats.id);
+
+    return generateBankrollTrend(runPicks, runStats.initialBank);
+  }, [view, runStats, picks, lifetimeStats.netInvested]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Global Preference Injection */}
       <StoreInitializer
         currency={user?.currency ?? "MXN"}
         oddsFormat={user?.preferredOdds ?? "DECIMAL"}
       />
 
-      {/* Onboarding Check */}
       {!user?.hasOnboarded && <OnboardingModal />}
 
-      {/* Navigation Bar */}
       <nav className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between items-center">
-            <div className="flex">
-              <div className="flex shrink-0 items-center">
-                <span className="text-xl font-bold text-blue-600">
-                  Bets Core
-                </span>
-              </div>
-            </div>
+            <span className="text-xl font-bold text-indigo-600">Bets Core</span>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-500">
                 {session.user.email}
               </span>
-              {/* Server Action for Logout */}
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut();
-                }}
+              <button
+                onClick={() => handleSignOut()}
+                className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
               >
-                <button
-                  type="submit"
-                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                >
-                  Sign Out
-                </button>
-              </form>
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Dashboard Content */}
       <main className="py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
           <div className="md:flex md:items-center md:justify-between mb-8">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-                My Dashboard
-              </h2>
-            </div>
-            <div className="mt-4 flex items-center gap-3 md:ml-4 md:mt-0">
-              <WalletModal />
+            <h2 className="text-2xl font-bold text-gray-900">My Dashboard</h2>
+
+            <div className="flex gap-3">
+              <WalletModal runStats={runStats} lifetimeStats={lifetimeStats} />
+
               <CreatePickModal
                 buttonLabel="Add New Pick"
-                currentBank={stats.currentBank}
+                currentBank={effectiveBankroll}
               />
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <StatsCards stats={stats} />
+          <StatsCards
+            runStats={runStats}
+            lifetimeStats={lifetimeStats}
+            view={view}
+            onViewChange={setView}
+          />
 
-          {/* Charts */}
-          <div className="mb-8">
-            {/* 4. Pass the PRE-CALCULATED data to the chart */}
-            {/* NOTE: You need to update BankrollChart.tsx to accept 'data' instead of 'picks' */}
-            <BankrollChart data={chartData} />
-          </div>
-
-          {/* History Table */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">History</h3>
+          <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Chart */}
+            <div className="lg:col-span-2">
+              <BankrollChart data={displayedChartData} />
             </div>
-            <DataTable columns={columns} data={picks} />
+
+            {/* Insights Panel */}
+            <div className="grid grid-rows-2 gap-6">
+              <BestPerformingSport
+                view={view}
+                data={
+                  view === "CYCLE"
+                    ? insights?.bestSport?.run ?? null
+                    : insights?.bestSport?.lifetime ?? null
+                }
+              />
+              {/*streals*/}
+              <StreakInsight
+                view={view}
+                data={
+                  view === "CYCLE"
+                    ? insights.streak.run
+                    : insights.streak.lifetime
+                }
+              />
+            </div>
           </div>
+
+          <DataTable columns={columns} data={picks} />
         </div>
       </main>
     </div>

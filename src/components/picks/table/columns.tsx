@@ -27,8 +27,7 @@ const getTeamName = (id: string | null) => {
 // Helper: Fix timezone offset for display
 const formatUTCDate = (dateString: Date) => {
   const date = new Date(dateString);
-  // This simple hack adds the timezone offset to force the date to display as entered
-  // Note: For a robust SaaS, consider saving user timezone in DB. For MVP, this works.
+
   const userTimezoneOffset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() + userTimezoneOffset);
 };

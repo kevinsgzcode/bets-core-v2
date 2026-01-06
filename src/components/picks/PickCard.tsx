@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Pick } from "@prisma/client";
 import { calculatePotentialProfit } from "@/lib/utils/odds";
-import { NFL_TEAMS } from "@/lib/constants"; // 👈 Import the dictionary
+import { NFL_TEAMS } from "@/lib/constants";
 
 interface PickCardProps {
   pick: Pick;
