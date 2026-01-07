@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { Resolver } from "react-hook-form";
 
 import { createPickSchema, type CreatePickSchema } from "@/lib/zod";
 import { createPick } from "@/actions/picks";
@@ -68,22 +69,13 @@ export function CreatePickForm({ onSuccess, oddsFormat }: CreatePickFormProps) {
   const [displayOdds, setDisplayOdds] = useState<string>("");
 
   const form = useForm<CreatePickSchema>({
-    resolver: zodResolver(createPickSchema),
+    resolver: zodResolver(createPickSchema) as Resolver<CreatePickSchema>,
     defaultValues: {
       mode: "MANUAL",
       sport: "NFL",
-      matchDate: new Date().toISOString().split("T")[0],
-      odds: 1.91,
-      stake: 50,
       bonus: 0,
-      homeTeam: "",
-      awayTeam: "",
-      league: "NFL",
-      selection: "",
-      eventDescription: "",
       isParlay: false,
-      legs: 2,
-      composition: "MIXED",
+      league: "NFL",
     },
   });
 

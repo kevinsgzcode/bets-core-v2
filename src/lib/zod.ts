@@ -26,18 +26,20 @@ const basePickSchema = z.object({
   sport: z.string().min(1, "Sport is required"),
 
   odds: z.coerce.number().min(1.01, "Odds must be greater than 1.0"),
+
   stake: z.coerce.number().positive("Stake must be positive"),
-  bonus: z.coerce.number().nonnegative().default(0),
+
+  bonus: z.coerce.number().default(0),
 
   isParlay: z.boolean().default(false),
-  legs: z.coerce.number().min(2).optional(),
+
+  legs: z.coerce.number().optional(),
+
   composition: z.string().optional(),
 
-  homeTeam: z.string().optional(),
-  awayTeam: z.string().optional(),
-  eventDescription: z.string().optional(),
-  selection: z.string(),
   league: z.string().default("NFL"),
+
+  eventDescription: z.string().optional(),
 });
 
 //smart mode
