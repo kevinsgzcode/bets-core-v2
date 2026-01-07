@@ -1,67 +1,82 @@
 import NextAuth from "next-auth";
+import Email from "next-auth/providers/email";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { signInSchema } from "@/lib/zod";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const ALLOWED_EMAILS = [
+  "kevinsgz.code@gmail.com",
+  "luis.montesgz96@gmail.com",
+  "naranjo_villegas@hotmail.com",
+];
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+
   providers: [
-    Credentials({
-      name: "Credentials",
-      // Definition of the credentials we expect
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+    Email({
+      server: {
+        host: "localhost",
+        port: 25,
+        auth: {
+          user: "",
+          pass: "",
+        },
       },
-      // The logic to verify if the user exists and password matches
-      authorize: async (credentials) => {
-        // Validate inputs using Zod Schema
-        // safeParse doesn't throw errors, it returns an object with success status
-        const validatedFields = signInSchema.safeParse(credentials);
 
-        if (!validatedFields.success) {
-          // Invalid format
-          return null;
-        }
+      from: process.env.EMAIL_FROM,
 
-        const { email, password } = validatedFields.data;
-
-        //  Find user in Database
-        const user = await prisma.user.findUnique({
-          where: { email },
+      async sendVerificationRequest({ identifier, url }) {
+        await resend.emails.send({
+          from: process.env.EMAIL_FROM!,
+          to: identifier,
+          subject: "Sign in to Bets Core",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+              <h2>Welcome to Bets Tracker 👋</h2>
+              <p>Click the button below to sign in:</p>
+              <a href="${url}" style="
+                display: inline-block;
+                margin-top: 16px;
+                padding: 12px 20px;
+                background: #2563eb;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: bold;
+              ">
+                Sign in
+              </a>
+              <p style="margin-top: 24px; font-size: 12px; color: #666;">
+                If you didn’t request this email, you can safely ignore it.
+              </p>
+            </div>
+          `,
         });
-
-        // If no user found, or user exists but has no password (e.g. Google Login user)
-        if (!user || !user.password) {
-          return null;
-        }
-
-        // Compare passwords (Input vs Hashed in DB)
-        const passwordsMatch = await bcrypt.compare(password, user.password);
-
-        if (passwordsMatch) {
-          // Return the user object
-          return user;
-        }
-        // Password incorrect
-        return null;
       },
     }),
   ],
+
+  session: {
+    strategy: "database",
+  },
+
+  pages: {
+    signIn: "/login",
+    verifyRequest: "/login?checkEmail=true",
+  },
+
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        //save ID
-        token.sub = user.id;
-      }
-      return token;
+    async signIn({ user }) {
+      if (!user.email) return false;
+      return ALLOWED_EMAILS.includes(user.email);
     },
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+
+    async session({ session, user }) {
+      if (session.user) {
+        session.user.id = user.id;
       }
       return session;
     },

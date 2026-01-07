@@ -1,29 +1,20 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect } from "react";
 
 import { useSettingsStore } from "@/lib/store";
 
-interface StoreInitializerProps {
+type Props = {
   currency: string;
-  oddsFormat: string;
-}
+  oddsFormat: "DECIMAL" | "AMERICAN";
+};
 
-export function StoreInitializer({
-  currency,
-  oddsFormat,
-}: StoreInitializerProps) {
-  const initialized = useRef(false);
+export function StoreInitializer({ currency, oddsFormat }: Props) {
+  const setPreferences = useSettingsStore((s) => s.setPreferences);
 
-  const { setPreferences } = useSettingsStore();
-
-  if (!initialized.current) {
-    // Validamos que el formato sea estrictamente el tipo esperado
-    const validFormat = oddsFormat === "AMERICAN" ? "AMERICAN" : "DECIMAL";
-
-    setPreferences(currency, validFormat);
-    initialized.current = true;
-  }
+  useEffect(() => {
+    setPreferences(currency, oddsFormat);
+  }, [currency, oddsFormat, setPreferences]);
 
   return null;
 }

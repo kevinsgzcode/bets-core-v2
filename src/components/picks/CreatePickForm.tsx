@@ -11,7 +11,6 @@ import {
   decimalToAmerican,
   calculatePotentialProfit,
 } from "@/lib/utils/odds";
-import { useSettingsStore } from "@/lib/store";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -38,12 +37,6 @@ import { TeamCombobox } from "./TeamCombobox";
 import { Loader2, Gift, Layers, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-interface CreatePickFormProps {
-  onSuccess: () => void;
-  currentBank: number;
-  closeModal: () => void;
-}
-
 const SPORTS_LIST = [
   "NFL",
   "BASEBALL",
@@ -56,15 +49,15 @@ const SPORTS_LIST = [
   "OTHER",
 ];
 
-export function CreatePickForm({
-  onSuccess,
-  currentBank,
-  closeModal,
-}: CreatePickFormProps) {
-  // 1. Get Global Preference
-  const { oddsFormat } = useSettingsStore();
+type OddsFormat = "DECIMAL" | "AMERICAN";
 
-  const [mode, setMode] = useState<"SMART" | "MANUAL">("MANUAL");
+interface CreatePickFormProps {
+  onSuccess: () => void;
+  oddsFormat: OddsFormat | null;
+}
+
+export function CreatePickForm({ onSuccess, oddsFormat }: CreatePickFormProps) {
+  //const [mode, setMode] = useState<"SMART" | "MANUAL">("MANUAL");
 
   // Initialize state based on the global store
   const [isAmericanOdds, setIsAmericanOdds] = useState(
@@ -72,7 +65,7 @@ export function CreatePickForm({
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [displayOdds, setDisplayOdds] = useState<string>("-110");
+  const [displayOdds, setDisplayOdds] = useState<string>("");
 
   const form = useForm<CreatePickSchema>({
     resolver: zodResolver(createPickSchema),
@@ -98,8 +91,8 @@ export function CreatePickForm({
   const stake = form.watch("stake");
   const odds = form.watch("odds");
   const bonus = form.watch("bonus");
-  const homeTeamName = form.watch("homeTeam");
-  const awayTeamName = form.watch("awayTeam");
+  //const homeTeamName = form.watch("homeTeam");
+  //const awayTeamName = form.watch("awayTeam");
   const isParlayMode = form.watch("isParlay"); // [NEW]
 
   // [UPDATED] Financial Calculations
@@ -160,9 +153,10 @@ export function CreatePickForm({
       toast.success(isParlayMode ? "Parlay created!" : "Pick created!");
       form.reset();
       onSuccess();
-      if (closeModal) closeModal();
     }
   }
+
+  if (!oddsFormat) return null;
 
   return (
     <Form {...form}>

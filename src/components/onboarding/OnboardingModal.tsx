@@ -59,7 +59,8 @@ export function OnboardingModal() {
           {/* 1. INITIAL BANKROLL */}
           <div className="space-y-3">
             <Label className="text-base font-semibold">
-              1. What is your Starting Bankroll?
+              1. What is your Starting Bankroll? Must be the same as your bet
+              house
             </Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />

@@ -13,6 +13,7 @@ import {
 import { CreatePickForm } from "./CreatePickForm";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useSettingsStore } from "@/lib/store";
 
 interface CreatePickModalProps {
   buttonLabel?: string;
@@ -25,6 +26,8 @@ export function CreatePickModal({
 }: CreatePickModalProps) {
   //set react state
   const [isOpen, setIsOpen] = useState(false);
+
+  const oddsFormat = useSettingsStore((s) => s.oddsFormat);
 
   //bankrupt
   const isBankrupt = currentBank <= 0.01;
@@ -60,7 +63,10 @@ export function CreatePickModal({
           </DialogDescription>
         </DialogHeader>
         {/* Form */}
-        <CreatePickForm onSuccess={() => setIsOpen(false)} />
+        <CreatePickForm
+          onSuccess={() => setIsOpen(false)}
+          oddsFormat={oddsFormat}
+        />
       </DialogContent>
     </Dialog>
   );
