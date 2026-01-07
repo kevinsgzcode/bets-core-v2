@@ -22,16 +22,22 @@ const basePickSchema = z.object({
     .refine((date) => new Date(date).toString() !== "Invalid date", {
       message: "Valid date is required",
     }),
+
   sport: z.string().min(1, "Sport is required"),
+
   odds: z.coerce.number().min(1.01, "Odds must be greater than 1.0"),
   stake: z.coerce.number().positive("Stake must be positive"),
-  bonus: z.coerce.number().nonnegative().optional().default(0),
+  bonus: z.coerce.number().nonnegative().default(0),
+
   isParlay: z.boolean().default(false),
-  legs: z.coerce
-    .number()
-    .min(2, "Parlays must have at least 2 picks")
-    .optional(),
+  legs: z.coerce.number().min(2).optional(),
   composition: z.string().optional(),
+
+  homeTeam: z.string().optional(),
+  awayTeam: z.string().optional(),
+  eventDescription: z.string().optional(),
+  selection: z.string(),
+  league: z.string().default("NFL"),
 });
 
 //smart mode
@@ -39,8 +45,6 @@ const smartPickSchema = basePickSchema.extend({
   mode: z.literal("SMART"),
   homeTeam: z.string().min(2, "Home team required"),
   awayTeam: z.string().min(2, "Away team required"),
-  selection: z.string().min(1, "Selection required"),
-  league: z.string().default("NFL"),
 });
 
 //manual mode
@@ -49,7 +53,6 @@ const manualPickSchema = basePickSchema.extend({
   eventDescription: z
     .string()
     .min(3, "Event description is required (e.g. Nadal vs Federer)"),
-  selection: z.string().min(1, "Pick selection is required"),
 });
 
 //Schema for creating a a pick
