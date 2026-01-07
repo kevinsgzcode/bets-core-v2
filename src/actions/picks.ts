@@ -163,7 +163,7 @@ export async function deletePick(pickId: string) {
     }
 
     // Prevent deleting picks from closed runs
-    if (!pick.run.isActive) {
+    if (!pick.run || !pick.run.isActive) {
       return {
         error: "You cannot delete picks from a closed run.",
       };
@@ -208,7 +208,7 @@ export async function updatePickStatus(pickId: string, newStatus: PickStatus) {
       return { error: "Pick not found" };
     }
 
-    if (!pick.run.isActive) {
+    if (!pick.run || !pick.run.isActive) {
       return {
         error: "You cannot update picks from a closed run",
       };
