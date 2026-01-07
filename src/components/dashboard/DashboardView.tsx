@@ -94,7 +94,7 @@ export function DashboardView({
             <h2 className="text-2xl font-bold text-gray-900">My Dashboard</h2>
 
             <div className="flex gap-3">
-              <WalletModal runStats={runStats} lifetimeStats={lifetimeStats} />
+              <WalletModal runStats={runStats} />
 
               <CreatePickModal
                 buttonLabel="Add New Pick"
