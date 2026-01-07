@@ -43,13 +43,13 @@ const basePickSchema = z.object({
 });
 
 //smart mode
-const smartPickSchema = basePickSchema.extend({
-  mode: z.literal("SMART"),
-  homeTeam: z.string().min(2, "Home team required"),
-  awayTeam: z.string().min(2, "Away team required"),
-  selection: z.string().min(1, "Selection required"),
-  league: z.string().default("NFL"),
-});
+//const smartPickSchema = basePickSchema.extend({
+//mode: z.literal("SMART"),
+//homeTeam: z.string().min(2, "Home team required"),
+//awayTeam: z.string().min(2, "Away team required"),
+//selection: z.string().min(1, "Selection required"),
+//league: z.string().default("NFL"),
+//});
 
 //manual mode
 const manualPickSchema = basePickSchema.extend({
@@ -62,7 +62,6 @@ const manualPickSchema = basePickSchema.extend({
 
 //Schema for creating a a pick
 export const createPickSchema = z.discriminatedUnion("mode", [
-  smartPickSchema,
   manualPickSchema,
 ]);
 

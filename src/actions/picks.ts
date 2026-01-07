@@ -102,7 +102,6 @@ export async function createPick(prevState: any, formData: FormData) {
     }
 
     //Create Pick inside the Run
-
     await prisma.pick.create({
       data: {
         userId,
@@ -111,7 +110,7 @@ export async function createPick(prevState: any, formData: FormData) {
         matchDate: new Date(data.matchDate),
         sport: data.sport,
         stake: data.stake,
-        bonus: data.bonus || 0,
+        bonus: data.bonus ?? 0,
         odds: data.odds,
         selection: data.selection,
         status: PickStatus.PENDING,
@@ -120,12 +119,12 @@ export async function createPick(prevState: any, formData: FormData) {
         legs: data.isParlay ? data.legs : 1,
         composition: data.isParlay ? data.composition : "SINGLE",
 
-        isManual: data.mode === "MANUAL",
-        eventDescription: data.mode === "MANUAL" ? data.eventDescription : null,
+        isManual: true,
+        eventDescription: data.eventDescription,
 
-        homeTeam: data.mode === "SMART" ? data.homeTeam : null,
-        awayTeam: data.mode === "SMART" ? data.awayTeam : null,
-        league: data.mode === "SMART" ? data.league : "CUSTOM",
+        homeTeam: null,
+        awayTeam: null,
+        league: "CUSTOM",
       },
     });
 
