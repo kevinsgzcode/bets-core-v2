@@ -29,8 +29,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       from: process.env.EMAIL_FROM,
-
       async sendVerificationRequest({ identifier, url }) {
+        if (!ALLOWED_EMAILS.includes(identifier)) {
+          console.warn(`Blocked login attempt for ${identifier}`);
+          return;
+        }
+
         await resend.emails.send({
           from: process.env.EMAIL_FROM!,
           to: identifier,
@@ -71,11 +75,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
-    async signIn({ user }) {
-      if (!user.email) return false;
-      return ALLOWED_EMAILS.includes(user.email);
-    },
-
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
