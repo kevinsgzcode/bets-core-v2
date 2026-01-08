@@ -2,9 +2,6 @@ import NextAuth from "next-auth";
 import Email from "next-auth/providers/email";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const ALLOWED_EMAILS = [
   "kevinsgz.code@gmail.com",
@@ -20,48 +17,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Email({
       server: {
-        host: "localhost",
-        port: 25,
+        host: "smtp.gmail.com",
+        port: 587,
         auth: {
-          user: "",
-          pass: "",
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD,
         },
       },
-
       from: process.env.EMAIL_FROM,
-      async sendVerificationRequest({ identifier, url }) {
-        if (!ALLOWED_EMAILS.includes(identifier)) {
-          console.warn(`Blocked login attempt for ${identifier}`);
-          return;
-        }
-
-        await resend.emails.send({
-          from: process.env.EMAIL_FROM!,
-          to: identifier,
-          subject: "Sign in to Bets Core",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-              <h2>Welcome to Bets Tracker 👋</h2>
-              <p>Click the button below to sign in:</p>
-              <a href="${url}" style="
-                display: inline-block;
-                margin-top: 16px;
-                padding: 12px 20px;
-                background: #2563eb;
-                color: white;
-                text-decoration: none;
-                border-radius: 6px;
-                font-weight: bold;
-              ">
-                Sign in
-              </a>
-              <p style="margin-top: 24px; font-size: 12px; color: #666;">
-                If you didn’t request this email, you can safely ignore it.
-              </p>
-            </div>
-          `,
-        });
-      },
     }),
   ],
 
@@ -75,6 +38,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
+    async signIn({ user }) {
+      if (!user.email) return false;
+      return ALLOWED_EMAILS.includes(user.email);
+    },
+
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
