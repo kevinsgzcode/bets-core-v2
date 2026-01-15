@@ -4,8 +4,9 @@ import LoginForm from "./LoginForm";
 
 export default async function LoginPage() {
   const session = await auth();
+  const isDev = process.env.NODE_ENV === "development";
 
-  if (session) {
+  if (session && !isDev) {
     redirect("/");
   }
 

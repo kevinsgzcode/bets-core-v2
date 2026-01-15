@@ -2,9 +2,11 @@
 
 import { useActionState } from "react";
 import { authenticate } from "./action";
+import { signIn } from "next-auth/react";
 
 export default function LoginForm() {
   const [errorMessage, dispatch] = useActionState(authenticate, undefined);
+  const isDev = process.env.NODE_ENV === "development";
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -36,6 +38,16 @@ export default function LoginForm() {
           <button className="w-full rounded-md bg-blue-600 py-2 text-white">
             Send magic link
           </button>
+
+          {isDev && (
+            <button
+              type="button"
+              onClick={() => signIn("credentials", { callbackUrl: "/" })}
+              className="w-full rouded-md bg-gray-900 py-2 text-white mt-3"
+            >
+              Dev login
+            </button>
+          )}
         </form>
       </div>
     </div>
